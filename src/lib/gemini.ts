@@ -67,12 +67,25 @@ Respond ONLY with valid JSON following this schema:
   ]
 }`;
 
-      const response = await client.interactions.create({
-        model: 'gemini-3.8-flash',
-        input: prompt,
-      });
-
-      const outputText = response.output_text;
+      let outputText: string | null | undefined = null;
+      try {
+        const response = await client.interactions.create({
+          model: 'gemini-3.8-flash',
+          input: prompt,
+        });
+        outputText = response.output_text;
+      } catch (interactionErr) {
+        console.warn('Interactions API not available, trying client.models.generateContent:', interactionErr);
+        try {
+          const response = await (client as any).models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+          });
+          outputText = response.text || null;
+        } catch (genContentErr) {
+          console.warn('generateContent error:', genContentErr);
+        }
+      }
       if (outputText) {
         // Strip markdown code fences if present
         const cleaned = outputText.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -293,12 +306,25 @@ Respond ONLY with valid JSON:
   "explanation": "string"
 }`;
 
-      const response = await client.interactions.create({
-        model: 'gemini-3.8-flash',
-        input: prompt,
-      });
-
-      const outputText = response.output_text;
+      let outputText: string | null | undefined = null;
+      try {
+        const response = await client.interactions.create({
+          model: 'gemini-3.8-flash',
+          input: prompt,
+        });
+        outputText = response.output_text;
+      } catch (interactionErr) {
+        console.warn('Interactions API not available, trying client.models.generateContent:', interactionErr);
+        try {
+          const response = await (client as any).models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+          });
+          outputText = response.text || null;
+        } catch (genContentErr) {
+          console.warn('generateContent error:', genContentErr);
+        }
+      }
       if (outputText) {
         const cleaned = outputText.replace(/```json/g, '').replace(/```/g, '').trim();
         const parsed = JSON.parse(cleaned);
