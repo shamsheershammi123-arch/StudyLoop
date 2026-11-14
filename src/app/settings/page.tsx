@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Course, UserProfile } from '@/lib/types';
 import { StudyStore } from '@/lib/store';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<UserProfile>(StudyStore.getProfile());
@@ -283,11 +284,16 @@ export default function SettingsPage() {
 
           <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 space-y-1">
             <div className="flex items-center justify-between font-bold">
-              <span>Storage & Persistence</span>
-              <span className="text-emerald-600 font-bold">Ready</span>
+              <span>Postgres & Supabase Storage</span>
+              <span className="text-emerald-600 font-bold flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {isSupabaseConfigured ? 'Live & Connected' : 'Local Persistent'}
+              </span>
             </div>
             <p className="text-[11px] text-slate-500">
-              Multi-tenant Postgres / Supabase schema provided in repository.
+              {isSupabaseConfigured
+                ? 'Cloud database connected (chvnlbwbxnhxiwuwrduj.supabase.co)'
+                : 'Multi-tenant Postgres / Supabase schema provided in repository.'}
             </p>
           </div>
         </div>
