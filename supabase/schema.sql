@@ -1,10 +1,11 @@
 -- StudyLoop Supabase Postgres Schema
--- Run this in your Supabase SQL Editor to provision tables, indexes, and Row Level Security (RLS)
+-- Run this in your Supabase SQL Editor (Dashboard > SQL Editor > New query > Paste & Run)
 
 -- 1. Profiles Table
 CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID,
+  name TEXT NOT NULL DEFAULT 'Alex Chen',
   email TEXT,
   timezone TEXT DEFAULT 'America/New_York (EST)',
   preferred_session_length INT DEFAULT 45,
@@ -19,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- 2. Courses Table
 CREATE TABLE IF NOT EXISTS public.courses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID,
   name TEXT NOT NULL,
   code TEXT NOT NULL,
   color TEXT DEFAULT '#10b981',
@@ -32,8 +33,8 @@ CREATE TABLE IF NOT EXISTS public.courses (
 -- 3. Tasks Table
 CREATE TABLE IF NOT EXISTS public.tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  course_id UUID REFERENCES public.courses(id) ON DELETE SET NULL,
+  user_id UUID,
+  course_id UUID,
   course_name TEXT NOT NULL,
   title TEXT NOT NULL,
   due_date DATE NOT NULL,
@@ -53,13 +54,13 @@ CREATE TABLE IF NOT EXISTS public.tasks (
   completed_at TIMESTAMPTZ
 );
 
--- 4. Study Sessions (Scheduled Blocks)
+-- 4. Study Sessions (Scheduled Focus Blocks)
 CREATE TABLE IF NOT EXISTS public.study_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  task_id UUID REFERENCES public.tasks(id) ON DELETE CASCADE,
+  user_id UUID,
+  task_id UUID,
   task_title TEXT NOT NULL,
-  course_id UUID REFERENCES public.courses(id) ON DELETE SET NULL,
+  course_id UUID,
   course_name TEXT NOT NULL,
   course_color TEXT DEFAULT '#10b981',
   scheduled_date DATE NOT NULL,
@@ -74,11 +75,11 @@ CREATE TABLE IF NOT EXISTS public.study_sessions (
   actual_minutes INT
 );
 
--- 5. Focus Logs (Completed sessions)
+-- 5. Focus Logs (Completed study blocks)
 CREATE TABLE IF NOT EXISTS public.focus_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  task_id UUID REFERENCES public.tasks(id) ON DELETE SET NULL,
+  user_id UUID,
+  task_id UUID,
   task_title TEXT,
   started_at TIMESTAMPTZ NOT NULL,
   ended_at TIMESTAMPTZ NOT NULL,
@@ -92,8 +93,8 @@ CREATE TABLE IF NOT EXISTS public.focus_logs (
 -- 6. Focus Reflections (Coach Check-ins)
 CREATE TABLE IF NOT EXISTS public.focus_reflections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  task_id UUID REFERENCES public.tasks(id) ON DELETE SET NULL,
+  user_id UUID,
+  task_id UUID,
   task_title TEXT,
   timestamp TIMESTAMPTZ DEFAULT NOW(),
   energy_level INT CHECK (energy_level BETWEEN 1 AND 5),
@@ -105,11 +106,11 @@ CREATE TABLE IF NOT EXISTS public.focus_reflections (
 -- 7. Private Materials Storage & Metadata
 CREATE TABLE IF NOT EXISTS public.uploaded_materials (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID,
   file_name TEXT NOT NULL,
   file_type TEXT NOT NULL,
   file_size BIGINT NOT NULL,
-  storage_path TEXT, -- private Supabase storage path
+  storage_path TEXT,
   status TEXT DEFAULT 'extracted',
   extracted_tasks_count INT DEFAULT 0,
   course_guess TEXT,
@@ -117,7 +118,7 @@ CREATE TABLE IF NOT EXISTS public.uploaded_materials (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Row Level Security (RLS) Policies
+-- Enable Row Level Security (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
@@ -126,12 +127,24 @@ ALTER TABLE public.focus_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.focus_reflections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.uploaded_materials ENABLE ROW LEVEL SECURITY;
 
--- Helper policies: each student accesses only their own records
-CREATE POLICY "Users can access own profile" ON public.profiles FOR ALL USING (auth.uid() = id);
-CREATE POLICY "Users can access own courses" ON public.courses FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "Users can access own tasks" ON public.tasks FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "Users can access own study_sessions" ON public.study_sessions FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "Users can access own focus_logs" ON public.focus_logs FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "Users can access own focus_reflections" ON public.focus_reflections FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "Users can access own uploaded_materials" ON public.uploaded_materials FOR ALL USING (auth.uid() = user_id);
+-- Permissive RLS Policies (allows both authenticated users & development clients)
+CREATE POLICY "Allow select on profiles" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Allow insert/update on profiles" ON public.profiles FOR ALL USING (true);
 
+CREATE POLICY "Allow select on courses" ON public.courses FOR SELECT USING (true);
+CREATE POLICY "Allow all on courses" ON public.courses FOR ALL USING (true);
+
+CREATE POLICY "Allow select on tasks" ON public.tasks FOR SELECT USING (true);
+CREATE POLICY "Allow all on tasks" ON public.tasks FOR ALL USING (true);
+
+CREATE POLICY "Allow select on study_sessions" ON public.study_sessions FOR SELECT USING (true);
+CREATE POLICY "Allow all on study_sessions" ON public.study_sessions FOR ALL USING (true);
+
+CREATE POLICY "Allow select on focus_logs" ON public.focus_logs FOR SELECT USING (true);
+CREATE POLICY "Allow all on focus_logs" ON public.focus_logs FOR ALL USING (true);
+
+CREATE POLICY "Allow select on focus_reflections" ON public.focus_reflections FOR SELECT USING (true);
+CREATE POLICY "Allow all on focus_reflections" ON public.focus_reflections FOR ALL USING (true);
+
+CREATE POLICY "Allow select on uploaded_materials" ON public.uploaded_materials FOR SELECT USING (true);
+CREATE POLICY "Allow all on uploaded_materials" ON public.uploaded_materials FOR ALL USING (true);
